@@ -24,6 +24,16 @@ public class ObjectPool<T> where T : new() {
         PoolPayload GetPayload();
 
         /// <summary>
+        /// Returns the pool object.
+        /// </summary>
+        T GetObject();
+
+        /// <summary>
+        /// Returns the pool the object belongs to.
+        /// </summary>
+        ObjectPool<T> GetPool();
+
+        /// <summary>
         /// Gets the status of the pooled object.
         /// </summary>
         /// <returns></returns>
@@ -46,7 +56,8 @@ public class ObjectPool<T> where T : new() {
         void ReturnToPool();
     }
 
-     protected class PoolReciept : IPoolObject {
+    [Serializable]
+    protected class PoolReciept : IPoolObject {
 
         public PoolPayload payload;
 
@@ -71,7 +82,7 @@ public class ObjectPool<T> where T : new() {
         public float activeStartTime = -1f;
         public float idleStartTime = -1f;
 
-        public PoolReciept( T aObj, ObjectPool<T> aPool, ObjectStatus aStatus = ObjectStatus.Unknown) {
+        public PoolReciept( T aObj, ObjectPool<T> aPool, ObjectStatus aStatus = ObjectStatus.Unknown ) {
             payload = new PoolPayload {
                 myPool = aPool,
                 obj = aObj
@@ -83,6 +94,14 @@ public class ObjectPool<T> where T : new() {
         #region Interface
         public PoolPayload GetPayload() {
             return payload;
+        }
+
+        public T GetObject() {
+            return payload.obj;
+        }
+
+        public ObjectPool<T> GetPool() {
+            return payload.myPool;
         }
 
         public ObjectStatus GetStatus() {
@@ -106,7 +125,7 @@ public class ObjectPool<T> where T : new() {
         }
         #endregion
     }
-
+   
     public struct PoolPayload {
 
         public ObjectPool<T> myPool;
@@ -143,10 +162,10 @@ public class ObjectPool<T> where T : new() {
 
     private bool _initialized = false;
 
-    protected List<PoolReciept> _pool = new List<PoolReciept>();
-    protected List<PoolReciept> _activeObjects = new List<PoolReciept>();
-    protected List<PoolReciept> _overflowObjects = new List<PoolReciept>();
-    protected List<PoolReciept> _idleObjects = new List<PoolReciept>();
+    [SerializeField, HideInInspector] protected List<PoolReciept> _pool = new List<PoolReciept>();
+    [SerializeField, HideInInspector] protected List<PoolReciept> _activeObjects = new List<PoolReciept>();
+    [SerializeField, HideInInspector] protected List<PoolReciept> _overflowObjects = new List<PoolReciept>();
+    [SerializeField, HideInInspector] protected List<PoolReciept> _idleObjects = new List<PoolReciept>();
 
     public delegate T ConstructObject( T aObject );
     protected ConstructObject _constructor;
@@ -175,7 +194,7 @@ public class ObjectPool<T> where T : new() {
     /// <summary>
     /// The number of idle object to ignore destorying even after the idle wait time has passed.
     /// </summary>
-    public int idleDontDestroy = 0; //TODO: IMPLIMENT
+    public int idleDontDestroy = 0;
     /// <summary>
     /// How long to wait before destroying an idle object.
     /// </summary>
@@ -214,7 +233,7 @@ public class ObjectPool<T> where T : new() {
     /// </summary>
     public UpdateMode updateMode = UpdateMode.Interval;
     
-    private UpdateType _updateType = UpdateType.Update;
+    [SerializeField] private UpdateType _updateType = UpdateType.Update;
 
     /// <summary>
     /// Update = Update the pool Unity's Update method.
@@ -270,6 +289,11 @@ public class ObjectPool<T> where T : new() {
             return;
         }
 
+        _pool = new List<PoolReciept>();
+        _activeObjects = new List<PoolReciept>();
+        _overflowObjects = new List<PoolReciept>();
+        _idleObjects = new List<PoolReciept>();
+
         updateType = _updateType;
         InternalInitialize();
         _initialized = true;
@@ -279,8 +303,10 @@ public class ObjectPool<T> where T : new() {
     #endregion
 
     #region Object Handling
-    protected virtual T CreateObject() {
-        return ( _constructor == null ) ? new T() : _constructor( new T() );
+    protected virtual PoolReciept CreateObject() {
+        T lObj = ( _constructor == null ) ? new T() : _constructor( new T() );
+        PoolReciept lReciept = new PoolReciept( lObj, this, ObjectStatus.Unknown );
+        return lReciept;
     }
 
     protected virtual void DestroyObject( PoolReciept aReciept ) {
@@ -316,15 +342,8 @@ public class ObjectPool<T> where T : new() {
     }
 
     public IPoolObject RequestObject() {
-        if( _pool.Count < maxObjects ) {
-            T lNewObj = CreateObject();
-            PoolReciept lReciept = new PoolReciept( lNewObj, this, ObjectStatus.Active ); ;
-            _pool.Add( lReciept );
-            _activeObjects.Add( lReciept );
-            StartAction?.Invoke( lReciept.payload.obj );
-            return lReciept;
-        }
-        else if( _idleObjects.Count > 0 ) {
+
+        if ( _idleObjects.Count > 0 ) {
             PoolReciept lIdle = _idleObjects[0];
             lIdle.SetStatus( ObjectStatus.Active );
             _activeObjects.Add( lIdle );
@@ -332,15 +351,22 @@ public class ObjectPool<T> where T : new() {
             StartAction?.Invoke( lIdle.payload.obj );
             return lIdle;
         }
+        else if ( _pool.Count < maxObjects ) {
+            PoolReciept lReciept = CreateObject();
+            lReciept.SetStatus( ObjectStatus.Active );
+            _pool.Add( lReciept );
+            _activeObjects.Add( lReciept );
+            StartAction?.Invoke( lReciept.payload.obj );
+            return lReciept;
+        }
         else if( poolType == PoolType.Recycle ) {
             PoolReciept lRecycledObj = _activeObjects[0];
             ReturnToPool( lRecycledObj );
             return RequestObject();
         }
         else if( poolType == PoolType.Overflow ) {
-            T lNewObj = CreateObject();
-
-            PoolReciept lReciept = new PoolReciept( lNewObj, this, ObjectStatus.Active ); ;
+            PoolReciept lReciept = CreateObject();
+            lReciept.SetStatus( ObjectStatus.Active );
             _pool.Add( lReciept );
             _overflowObjects.Add( lReciept );
             StartAction?.Invoke( lReciept.payload.obj );
@@ -371,6 +397,9 @@ public class ObjectPool<T> where T : new() {
                 _overflowObjects.Remove( lReciept );
                 _idleObjects.Add( lReciept );
                 ReturnAction?.Invoke( lReciept.payload.obj );
+            }
+            else {
+                DestroyObject( lReciept );
             }
         }
         else if( isOpenPool ) {
@@ -437,7 +466,7 @@ public class ObjectPool<T> where T : new() {
 
         switch ( updateMode ) {
             case UpdateMode.Interval:
-                if ( lastUpdateTime + updateIntervalInSeconds >= Time.realtimeSinceStartup ) {
+                if ( lastUpdateTime + updateIntervalInSeconds <= Time.realtimeSinceStartup ) {
                     if ( destroyIdle ) {
                         UpdateIdle();
                     }
@@ -470,7 +499,9 @@ public class ObjectPool<T> where T : new() {
     private void UpdateIdle() {
         for ( int i = 0; i < _idleObjects.Count; i++ ) {
             if ( _idleObjects[i].idleStartTime + destroyIdleWaitTimeInSeconds <= Time.realtimeSinceStartup ) {
-                DestroyObject( _idleObjects[i] );
+                if( _idleObjects.Count > idleDontDestroy ) {
+                    DestroyObject( _idleObjects[i] );
+                }
             }
         }
     }
@@ -478,7 +509,8 @@ public class ObjectPool<T> where T : new() {
     private void UpdateActive() {
         for ( int i = 0; i < _activeObjects.Count; i++ ) {
             if ( _activeObjects[i].activeStartTime + activeLifetimeInSeconds <= Time.realtimeSinceStartup ) {
-                DestroyObject( _activeObjects[i] );
+                _activeObjects[i].ReturnToPool();
+                //DestroyObject( _activeObjects[i] );
             }
         }
     }
@@ -486,7 +518,7 @@ public class ObjectPool<T> where T : new() {
     private void UpdateOverflow() {
         for ( int i = 0; i < _overflowObjects.Count; i++ ) {
             if ( _overflowObjects[i].activeStartTime + activeLifetimeInSeconds <= Time.realtimeSinceStartup ) {
-                DestroyObject( _overflowObjects[i] );
+                _overflowObjects[i].ReturnToPool();
             }
         }
     }
@@ -503,6 +535,7 @@ public class ObjectPool<T> where T : new() {
 public class GameObjectPool : ObjectPool<GameObject>{
 
     [SerializeField] private GameObject _prefab;
+    public Transform parentObject = null;
 
     public GameObjectPool( GameObject aPrefab, int aMaxObjects, float aDestroyIdleWaitTimeInSeconds,
                            float aUpdateIntervalInSeconds, float aActiveLifetimeInSeconds, 
@@ -525,9 +558,14 @@ public class GameObjectPool : ObjectPool<GameObject>{
         _prefab = aPrefab;
     }
 
-    protected sealed override GameObject CreateObject() {
+    protected override PoolReciept CreateObject() {
         GameObject lObj = GameObject.Instantiate( _prefab );
-        return ( _constructor == null ) ? lObj : _constructor( lObj );
+        if( parentObject != null ) {
+            lObj.transform.parent = parentObject;
+        }
+        lObj = ( _constructor == null ) ? lObj : _constructor( lObj );
+
+        return new PoolReciept( lObj, this, ObjectStatus.Unknown ); 
     }
 
     protected sealed override void DestroyObject( PoolReciept aReciept ) {
