@@ -1,9 +1,11 @@
 # Unity Object Pools
 
+- This repo inclues my UniversalMonobehavior script which allows non-Monobehaviors to utilize aspects of a Monobehavior such as Update and Coroutines with an easy to access singleton instance.
+
 #### **This code is still in development and has not been thoroughly tested. Use at your own discretion.**
 
-## Class ObjectPool
-
+## Class ObjectPool & GameObjectPool
+Both ObjectPool and GameObjectPool are serialized classes that can be exposed in the Unity editor.
 <details>
   <summary>Constructors</summary>
   
@@ -73,8 +75,6 @@
   void | SetConstructor(ConstructObject) | Sets the constructon action for objects upon creation.
   void | SetPrefab(GameObject) | Sets the prefab used to create new objects in the pool<br> **\*GameObjectPool Only.**
  </details>
-  
-``Both ObjectPool and GameObjectPool are serialized classes that can be exposed in the Unity editor.``
   
 ## Interface IPoolObject
 <details>
