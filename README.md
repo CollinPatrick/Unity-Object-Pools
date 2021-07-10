@@ -63,6 +63,7 @@ Both ObjectPool and GameObjectPool are serialized classes that can be exposed in
   PoolType(enum) | poolType | Recycle = Reuse objects while they are still active if pool is full,<br>Overflow = Create temporary objects that get destroyed upon return if pool is full.
   UpdateMode(enum) | updateMode | Interval = Update the pool using a pre-defined interval.<br>Constant = Update the pool every frame.<br>None = Do not update the pool.
   UpdateType(enum) | updateType | Update = Update the pool Unity's Update method.<br>FixedUpdate = Update the pool Unity's FixedUpdate method.<br>LateUpdate = Update the pool using Unity's LateUpdate method.
+  Transform | parentObject | The transform of a GameObject to parent pooled objects to.<br>**\*GameObjectPool Only.**
    </details>
 
 <details>
@@ -83,6 +84,8 @@ Both ObjectPool and GameObjectPool are serialized classes that can be exposed in
   Return Type | Method | Summary
   ----------- | ------ | -------
   PoolPayload | GetPayload() | Returns a struct containing the pooled object and its associated pool.
+  T | GetObject() | Returns the pool object.
+  ObjectPool<T> | GetPool() | Returns the pool the object belongs to.
   ObjectStatus(enum) | GetStatus() | Returns the status of the pooled object.
   float | GetActiveStartTime() | Returns the Time.realTimeSinceStartup of when the pooled object last became active.
   float | GetIdleStartTime() | Gets the Time.realTimeSinceStartup of when the pooled object last became idle.
