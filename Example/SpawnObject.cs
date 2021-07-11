@@ -25,7 +25,6 @@ public class SpawnObject : MonoBehaviour
     }
 
     private void OnCollisionEnter( Collision collision ) {
-        Debug.Log( "Collide" );
         if( collision.transform.name == "Wall" ) {
             if ( _myObject.GetStatus() == GameObjectPool.ObjectStatus.Active ) {
                 if( _returnPool == null ) {
@@ -35,7 +34,6 @@ public class SpawnObject : MonoBehaviour
                     _returnPool.ReturnToPool( _myObject );
                 }
             }
-            _myObject = null;
         }
     }
 }
