@@ -167,8 +167,8 @@ public class ObjectPool<T> where T : new() {
     [SerializeField, HideInInspector] protected List<PoolReciept> _overflowObjects = new List<PoolReciept>();
     [SerializeField, HideInInspector] protected List<PoolReciept> _idleObjects = new List<PoolReciept>();
 
-    public delegate T ConstructObject( T aObject );
-    protected ConstructObject _constructor;
+    public delegate IPoolObject ConstructObject( IPoolObject aObject );
+    protected Action<IPoolObject> _constructor;
 
     /// <summary>
     /// An action to perform on an object before it becomes active
@@ -259,7 +259,7 @@ public class ObjectPool<T> where T : new() {
                        bool aDestroyIdle, bool aIsOpenPool,
                        PoolType aPoolType = PoolType.Recycle,
                        UpdateMode aUpdateMode = UpdateMode.Interval,
-                       ConstructObject aConstruct = null ) 
+                       Action<IPoolObject> aConstruct = null ) 
                        : this(aMaxObjects, aDestroyIdleWaitTimeInSeconds, aConstruct){
 
         updateIntervalInSeconds = aUpdateIntervalInSeconds;
@@ -270,13 +270,13 @@ public class ObjectPool<T> where T : new() {
         updateMode = aUpdateMode;
     }
 
-    public ObjectPool( int aMaxObjects, float aDestroyIdleWaitTimeInSeconds, ConstructObject aConstruct = null )
+    public ObjectPool( int aMaxObjects, float aDestroyIdleWaitTimeInSeconds, Action<IPoolObject> aConstruct = null )
                        : this( aConstruct ){
         maxObjects = aMaxObjects;
         destroyIdleWaitTimeInSeconds = aDestroyIdleWaitTimeInSeconds;
     }
 
-    public ObjectPool( ConstructObject aContruct = null ) {
+    public ObjectPool( Action<IPoolObject> aContruct = null ) {
         _constructor = aContruct;
     }
 
@@ -284,7 +284,7 @@ public class ObjectPool<T> where T : new() {
         RemoveUpdate( updateType );
     }
 
-    public void Initialize() {
+    private void Initialize() {
         if ( _initialized ) {
             return;
         }
@@ -304,8 +304,11 @@ public class ObjectPool<T> where T : new() {
 
     #region Object Handling
     protected virtual PoolReciept CreateObject() {
-        T lObj = ( _constructor == null ) ? new T() : _constructor( new T() );
+        T lObj = new T();
         PoolReciept lReciept = new PoolReciept( lObj, this, ObjectStatus.Unknown );
+        if( _constructor != null ) {
+            _constructor( lReciept );
+        }
         return lReciept;
     }
 
@@ -342,6 +345,10 @@ public class ObjectPool<T> where T : new() {
     }
 
     public IPoolObject RequestObject() {
+
+        if ( !_initialized ) {
+            Initialize();
+        }
 
         //Cleans out any leftover overflow objects before using active objects.
         if( poolType == PoolType.Recycle && _overflowObjects.Count > 0 ) {
@@ -386,6 +393,10 @@ public class ObjectPool<T> where T : new() {
     }
 
     public void ReturnToPool( IPoolObject aObject ) {
+
+        if ( !_initialized ) {
+            Initialize();
+        }
 
         PoolReciept lReciept = aObject as PoolReciept;
         if( aObject == null || lReciept == null ) {
@@ -535,7 +546,7 @@ public class ObjectPool<T> where T : new() {
     #endregion
 
     #region Setters
-    public void SetConstructor(ConstructObject aConstruct) {
+    public void SetConstructor( Action<IPoolObject> aConstruct ) {
         _constructor = aConstruct;
     }
     #endregion
@@ -552,30 +563,35 @@ public class GameObjectPool : ObjectPool<GameObject>{
                            bool aDestroyIdle, bool aIsOpenPool,
                            PoolType aPoolType = PoolType.Recycle,
                            UpdateMode aUpdateMode = UpdateMode.Interval,
-                           ConstructObject aConstruct = null )
+                           Action<IPoolObject> aConstruct = null )
                            : base( aMaxObjects, aDestroyIdleWaitTimeInSeconds, aUpdateIntervalInSeconds, 
                                    aActiveLifetimeInSeconds, aDestroyIdle, aIsOpenPool, aPoolType,
                                    aUpdateMode, aConstruct ) {
         _prefab = aPrefab;
     }
 
-    public GameObjectPool( GameObject aPrefab, int aMaxObjects, float aDestroyIdleWaitTimeInSeconds, ConstructObject aConstruct = null )
+    public GameObjectPool( GameObject aPrefab, int aMaxObjects, float aDestroyIdleWaitTimeInSeconds, Action<IPoolObject> aConstruct = null )
                            : base( aMaxObjects, aDestroyIdleWaitTimeInSeconds, aConstruct ) {
         _prefab = aPrefab;
     }
 
-    public GameObjectPool( GameObject aPrefab, ConstructObject aConstruct = null ) : base( aConstruct ) {
+    public GameObjectPool( GameObject aPrefab, Action<IPoolObject> aConstruct = null ) : base( aConstruct ) {
         _prefab = aPrefab;
     }
 
     protected override PoolReciept CreateObject() {
         GameObject lObj = GameObject.Instantiate( _prefab );
+
         if( parentObject != null ) {
             lObj.transform.parent = parentObject;
         }
-        lObj = ( _constructor == null ) ? lObj : _constructor( lObj );
 
-        return new PoolReciept( lObj, this, ObjectStatus.Unknown ); 
+        PoolReciept lReciept = new PoolReciept( lObj, this, ObjectStatus.Unknown );
+        if( _constructor != null ) {
+            _constructor( lReciept );
+        }
+
+        return lReciept;
     }
 
     protected sealed override void DestroyObject( PoolReciept aReciept ) {
