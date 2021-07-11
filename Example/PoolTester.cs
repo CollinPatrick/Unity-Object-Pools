@@ -13,7 +13,10 @@ public class PoolTester : MonoBehaviour
 
     void Start()
     {
-        _pool.Initialize();
+        _pool.SetConstructor( ( lObj ) => {
+            lObj.GetObject().GetComponent<SpawnObject>().Initialize( lObj );
+        } );
+
         _pool.StartAction = ( obj ) => {
             obj.transform.position = transform.position + Vector3.up;
             obj.SetActive( true );
@@ -24,7 +27,12 @@ public class PoolTester : MonoBehaviour
             obj.SetActive( false );
         };
 
-        _pool2.Initialize();
+        //////////////////////////////////////////////////////////////////
+
+        _pool2.SetConstructor( ( lObj ) => {
+            lObj.GetObject().GetComponent<SpawnObject>().Initialize( lObj, _pool );
+        } );
+
         _pool2.StartAction = ( obj ) => {
             obj.transform.position = transform.position - Vector3.up;
             obj.SetActive( true );
@@ -38,30 +46,27 @@ public class PoolTester : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if ( Input.GetMouseButton( 0 ) ) { 
-            Shoot();
-        }
-
-        if ( Input.GetMouseButton( 1 ) ) {
-            Shoot2();
-        }
+        Shoot();
+        Shoot2();
     }
 
     private void Shoot() {
         _shootTimer += Time.deltaTime;
-        if( _shootTimer >= _shootInterval ) {
-            GameObjectPool.IPoolObject lObj = _pool.RequestObject();
-            lObj.GetObject().GetComponent<SpawnObject>().Initialize( lObj );
-            _shootTimer = 0;
+        if ( Input.GetMouseButton( 0 ) ) {
+            if ( _shootTimer >= _shootInterval ) {
+                _pool.RequestObject();
+                _shootTimer = 0;
+            }
         }
     }
 
     private void Shoot2() {
         _shootTimer2 += Time.deltaTime;
-        if ( _shootTimer2 >= _shootInterval ) {
-            GameObjectPool.IPoolObject lObj = _pool2.RequestObject();
-            lObj.GetObject().GetComponent<SpawnObject>().Initialize( lObj, _pool );
-            _shootTimer2 = 0;
+        if ( Input.GetMouseButton( 1 ) ) {
+            if ( _shootTimer2 >= _shootInterval ) {
+                _pool2.RequestObject();
+                _shootTimer2 = 0;
+            }
         }
     }
 }
