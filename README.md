@@ -1,11 +1,13 @@
 # Unity Object Pools
 
-- This repo inclues my UniversalMonobehavior script which allows non-Monobehaviors to utilize aspects of a Monobehavior such as Update and Coroutines with an easy to access singleton instance.
-
 #### **This code is still in development and has not been thoroughly tested. Use at your own discretion.**
 
-## Class ObjectPool & GameObjectPool
-Both ObjectPool and GameObjectPool are serialized classes that can be exposed in the Unity editor.
+- This repo inclues my UniversalMonobehavior script which allows non-Monobehaviors to utilize aspects of a Monobehavior such as Update and Coroutines with an easy to access singleton instance.
+
+## ObjectPool & GameObjectPool
+Both **ObjectPool** and **GameObjectPool** are serialized classes that can be exposed in the Unity editor.
+
+The **GameObjectPool** class is a derived class of ObjectPool<T> which is used to pool Unity GameObjects. This class automatically handles the instantiation and destruction of GameObjects. 
 <details>
   <summary>Constructors</summary>
   
@@ -73,11 +75,11 @@ Both ObjectPool and GameObjectPool are serialized classes that can be exposed in
   ----------- | ------ | -------
   IPoolObject | RequestObject() | Retrieves an object from the pool To be used.
   void | ReturnToPool(IPoolObject) | Returns an object to the pool.
-  void | SetConstructor(ConstructObject) | Sets the constructon action for objects upon creation.
+  void | SetConstructor(delegate\<IPoolObject\>) | Sets the constructon action for objects upon creation.
   void | SetPrefab(GameObject) | Sets the prefab used to create new objects in the pool<br> **\*GameObjectPool Only.**
  </details>
   
-## Interface IPoolObject
+## IPoolObject
 <details>
   <summary>Public Methods</summary>
   
@@ -92,7 +94,7 @@ Both ObjectPool and GameObjectPool are serialized classes that can be exposed in
   void | ReturnToPool() | Returns the object to its associated pool.
  </details>
   
-## Class UniversalMonobehavior
+## UniversalMonobehavior
   This class will automatically create a GameObject instance of itself when a static method is called.
   
   <details>
@@ -117,3 +119,40 @@ Both ObjectPool and GameObjectPool are serialized classes that can be exposed in
  </details>
   
 ## Example
+An object pool can be created by either constructing the object or exposing it to the inspector inside the Unity editor.
+
+<details>
+  <summary>Configuration</summary>
+  
+  Because all objects created in the pool use their parameterless constructor and some objects need additional configuration when created, a constructor callback can be set. This callback runs after an object is created and functions like a regualr constructor to remedy this limitation. 
+
+For example, this pool handles bullet GameObjects. Each bullet needs a reference to its PoolObject interface. This could be set when the object is requested, but for efficiency, the reference can be set once, when the bullet is created inside the constructor callback.
+```C#
+_pool.SetConstructor( ( lObj ) => {
+  lObj.GetObject().GetComponent<SpawnObject>().Initialize( lObj );
+  return lObj;
+} );
+```
+  
+Aside from the configuration variables avalible in the constructor and editor fields, the object pools also have callback methods that run when an object is requested, returned, removed, and deleted.
+These can be useful if an object needs additional setup during each step of its life.
+
+For example, this pool handles bullets which need to be enabled/disabled and moved to a specified location when retrieved and returned to and from the pool.
+```C#
+ _pool.StartAction = ( obj ) => {
+    obj.transform.position = transform.position + Vector3.up;
+    obj.SetActive( true );
+};
+
+_pool.ReturnAction = ( obj ) => {
+    obj.transform.position = transform.position;
+    obj.SetActive( false );
+};
+```
+</details>
+  
+<details>
+  <summary>Useage</summary>
+  
+</details>
+
