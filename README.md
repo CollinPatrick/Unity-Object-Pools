@@ -1,6 +1,6 @@
 # Unity Object Pools
 
-#### **This code is still in development and has not been thoroughly tested. Use at your own discretion.**
+#### **This code has not been used in a production environment. Use at your own discretion.**
 
 - This repo inclues my UniversalMonobehavior script which allows non-Monobehaviors to utilize aspects of a Monobehavior such as Update and Coroutines with an easy to access singleton instance.
 
