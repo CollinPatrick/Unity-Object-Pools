@@ -343,6 +343,13 @@ public class ObjectPool<T> where T : new() {
 
     public IPoolObject RequestObject() {
 
+        //Cleans out any leftover overflow objects before using active objects.
+        if( poolType == PoolType.Recycle && _overflowObjects.Count > 0 ) {
+            PoolReciept lRecycledObj = _overflowObjects[0];
+            ReturnToPool( lRecycledObj );
+            return RequestObject();
+        }
+
         if ( _idleObjects.Count > 0 ) {
             PoolReciept lIdle = _idleObjects[0];
             lIdle.SetStatus( ObjectStatus.Active );
@@ -382,7 +389,7 @@ public class ObjectPool<T> where T : new() {
 
         PoolReciept lReciept = aObject as PoolReciept;
         if( aObject == null || lReciept == null ) {
-            Debug.LogError( "Error: Cannot return null to object pool." );
+            Debug.LogError( $"[{nameof( ObjectPool<T> )}] - Error: Cannot return null to object pool." );
             return;
         }
 
@@ -393,7 +400,7 @@ public class ObjectPool<T> where T : new() {
             ReturnAction?.Invoke( lReciept.payload.obj );
 
         }else if( _overflowObjects.Contains( lReciept ) ) {
-            if( _pool.Count < maxObjects ) {
+            if( _pool.Count < maxObjects || poolType == PoolType.Recycle ) {
                 _overflowObjects.Remove( lReciept );
                 _idleObjects.Add( lReciept );
                 ReturnAction?.Invoke( lReciept.payload.obj );
@@ -407,6 +414,7 @@ public class ObjectPool<T> where T : new() {
                 _pool.Add( lReciept );
                 _idleObjects.Add( lReciept );
                 lReciept.payload.myPool.RemoveObject( lReciept );
+                lReciept.payload = new PoolPayload( this, lReciept.payload.obj );
                 ReturnAction?.Invoke( lReciept.payload.obj );
             }
             else {
@@ -414,6 +422,7 @@ public class ObjectPool<T> where T : new() {
                     _pool.Add( lReciept );
                     _overflowObjects.Add( lReciept );
                     lReciept.payload.myPool.RemoveObject( lReciept );
+                    lReciept.payload = new PoolPayload( this, lReciept.payload.obj );
                     ReturnAction?.Invoke( lReciept.payload.obj );
                 }
                 else {
@@ -423,8 +432,9 @@ public class ObjectPool<T> where T : new() {
             }
         }
         else {
-            Debug.LogError( $"Error: Attempted to return a foreign object to a closed object pool. Attempting to return to original pool" );
+            Debug.LogError( $"[{nameof(ObjectPool<T>)}] - Error: Attempted to return a foreign object to a closed object pool. Attempting to return to original pool" );
             lReciept.payload.myPool.ReturnToPool( lReciept );
+            ReturnAction?.Invoke( lReciept.payload.obj );
         }
     }
     #endregion
