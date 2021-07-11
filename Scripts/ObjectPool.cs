@@ -1,6 +1,4 @@
 using System;
-using System.Collections;
-using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -421,26 +419,34 @@ public class ObjectPool<T> where T : new() {
             }
         }
         else if( isOpenPool ) {
-            if( _pool.Count < maxObjects ) {
-                _pool.Add( lReciept );
-                _idleObjects.Add( lReciept );
-                lReciept.payload.myPool.RemoveObject( lReciept );
-                lReciept.payload = new PoolPayload( this, lReciept.payload.obj );
-                ReturnAction?.Invoke( lReciept.payload.obj );
-            }
-            else {
-                if ( poolType == PoolType.Overflow ) {
+            if(lReciept.payload.obj is T ) {
+                if ( _pool.Count < maxObjects ) {
                     _pool.Add( lReciept );
-                    _overflowObjects.Add( lReciept );
+                    _idleObjects.Add( lReciept );
                     lReciept.payload.myPool.RemoveObject( lReciept );
                     lReciept.payload = new PoolPayload( this, lReciept.payload.obj );
                     ReturnAction?.Invoke( lReciept.payload.obj );
                 }
                 else {
-                    ReturnAction?.Invoke( lReciept.payload.obj );
-                    DestroyObject( lReciept );
+                    if ( poolType == PoolType.Overflow ) {
+                        _pool.Add( lReciept );
+                        _overflowObjects.Add( lReciept );
+                        lReciept.payload.myPool.RemoveObject( lReciept );
+                        lReciept.payload = new PoolPayload( this, lReciept.payload.obj );
+                        ReturnAction?.Invoke( lReciept.payload.obj );
+                    }
+                    else {
+                        ReturnAction?.Invoke( lReciept.payload.obj );
+                        DestroyObject( lReciept );
+                    }
                 }
             }
+            else {
+                Debug.LogError( $"[{nameof( ObjectPool<T> )}] - Error: Attempted to return a foreign object to an object pool of a different type. Attempting to return to original pool" );
+                lReciept.payload.myPool.ReturnToPool( lReciept );
+                ReturnAction?.Invoke( lReciept.payload.obj );
+            }
+
         }
         else {
             Debug.LogError( $"[{nameof(ObjectPool<T>)}] - Error: Attempted to return a foreign object to a closed object pool. Attempting to return to original pool" );
@@ -597,6 +603,57 @@ public class GameObjectPool : ObjectPool<GameObject>{
     protected sealed override void DestroyObject( PoolReciept aReciept ) {
         RemoveObject( aReciept );
         GameObject.Destroy( aReciept.payload.obj );
+    }
+
+    public void SetPrefab( GameObject aPrefab ) {
+        _prefab = aPrefab;
+    }
+}
+
+[Serializable]
+public class ComponentPool<T> : ObjectPool<T> where T : MonoBehaviour, new() {
+    [SerializeField] private GameObject _prefab;
+    public Transform parentObject = null;
+
+    public ComponentPool( GameObject aPrefab, int aMaxObjects, float aDestroyIdleWaitTimeInSeconds,
+                           float aUpdateIntervalInSeconds, float aActiveLifetimeInSeconds,
+                           bool aDestroyIdle, bool aIsOpenPool,
+                           PoolType aPoolType = PoolType.Recycle,
+                           UpdateMode aUpdateMode = UpdateMode.Interval,
+                           Action<IPoolObject> aConstruct = null )
+                           : base( aMaxObjects, aDestroyIdleWaitTimeInSeconds, aUpdateIntervalInSeconds,
+                                   aActiveLifetimeInSeconds, aDestroyIdle, aIsOpenPool, aPoolType,
+                                   aUpdateMode, aConstruct ) {
+        _prefab = aPrefab;
+    }
+
+    public ComponentPool( GameObject aPrefab, int aMaxObjects, float aDestroyIdleWaitTimeInSeconds, Action<IPoolObject> aConstruct = null )
+                           : base( aMaxObjects, aDestroyIdleWaitTimeInSeconds, aConstruct ) {
+        _prefab = aPrefab;
+    }
+
+    public ComponentPool( GameObject aPrefab, Action<IPoolObject> aConstruct = null ) : base( aConstruct ) {
+        _prefab = aPrefab;
+    }
+
+    protected override PoolReciept CreateObject() {
+        GameObject lObj = GameObject.Instantiate( _prefab );
+
+        if ( parentObject != null ) {
+            lObj.transform.parent = parentObject;
+        }
+
+        PoolReciept lReciept = new PoolReciept( lObj.GetComponent<T>(), this, ObjectStatus.Unknown );
+        if ( _constructor != null ) {
+            _constructor( lReciept );
+        }
+
+        return lReciept;
+    }
+
+    protected sealed override void DestroyObject( PoolReciept aReciept ) {
+        RemoveObject( aReciept );
+        GameObject.Destroy( aReciept.payload.obj.gameObject );
     }
 
     public void SetPrefab( GameObject aPrefab ) {

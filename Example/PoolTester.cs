@@ -5,10 +5,10 @@ using UnityEngine;
 public class PoolTester : MonoBehaviour
 {
     [SerializeField] private GameObjectPool _pool;
-    [SerializeField] private GameObjectPool _pool2;
+    [SerializeField] private ComponentPool<ComponentSpawnObject> _pool2;
     [SerializeField] private float _shootInterval = 0.5f;
 
-    private float _shootTimer = 0;
+    private float _shootTimer = 0; 
     private float _shootTimer2 = 0;
 
     void Start()
@@ -30,16 +30,16 @@ public class PoolTester : MonoBehaviour
         //////////////////////////////////////////////////////////////////
 
         _pool2.SetConstructor( ( lObj ) => {
-            lObj.GetObject().GetComponent<SpawnObject>().Initialize( lObj, _pool );
+            lObj.GetObject().Initialize( lObj );
         } );
 
         _pool2.StartAction = ( obj ) => {
             obj.transform.position = transform.position - Vector3.up;
-            obj.SetActive( true );
+            obj.gameObject.SetActive( true );
         };
-        _pool.ReturnAction = ( obj ) => {
+        _pool2.ReturnAction = ( obj ) => {
             obj.transform.position = transform.position;
-            obj.SetActive( false );
+            obj.gameObject.SetActive( false );
         };
     }
 
