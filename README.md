@@ -14,10 +14,11 @@ The **GameObjectPool** class is a derived class of ObjectPool<T> which is used t
   
   #### Generic
   ```c#
-  new ObjectPool<T>( ConstructObject aContruct = null );
+  new ObjectPool<T>( Action<IPoolObject> aContruct = null );
   ```
   ```c#
-  new ObjectPool<T>( int aMaxObjects, float aDestroyIdleWaitTimeInSeconds, ConstructObject aConstruct = null );
+  new ObjectPool<T>( int aMaxObjects, float aDestroyIdleWaitTimeInSeconds, 
+                     Action<IPoolObject> aConstruct = null );
   ```
   ```c#
   new ObjectPool<T>( int aMaxObjects, float aDestroyIdleWaitTimeInSeconds,
@@ -25,7 +26,7 @@ The **GameObjectPool** class is a derived class of ObjectPool<T> which is used t
                      bool aDestroyIdle, bool aIsOpenPool,
                      PoolType aPoolType = PoolType.Recycle,
                      UpdateMode aUpdateMode = UpdateMode.Interval,
-                     ConstructObject aConstruct = null );
+                     Action<IPoolObject> aConstruct = null );
   ````
   #### GameObject
   ```c#
@@ -34,7 +35,7 @@ The **GameObjectPool** class is a derived class of ObjectPool<T> which is used t
   ```c#
   new GameObjectPool( GameObject aPrefab, int aMaxObjects, 
                       float aDestroyIdleWaitTimeInSeconds, 
-                      ConstructObject aConstruct = null );
+                      Action<IPoolObject> aConstruct = null );
   ```
   ```c#
   new GameObjectPool( GameObject aPrefab, int aMaxObjects, float aDestroyIdleWaitTimeInSeconds,
@@ -42,7 +43,7 @@ The **GameObjectPool** class is a derived class of ObjectPool<T> which is used t
                       bool aDestroyIdle, bool aIsOpenPool,
                       PoolType aPoolType = PoolType.Recycle,
                       UpdateMode aUpdateMode = UpdateMode.Interval,
-                      ConstructObject aConstruct = null );
+                      Action<IPoolObject> aConstruct = null );
 ````
 </details>
 
@@ -75,7 +76,7 @@ The **GameObjectPool** class is a derived class of ObjectPool<T> which is used t
   ----------- | ------ | -------
   IPoolObject | RequestObject() | Retrieves an object from the pool To be used.
   void | ReturnToPool(IPoolObject) | Returns an object to the pool.
-  void | SetConstructor(delegate\<IPoolObject\>) | Sets the constructon action for objects upon creation.
+  void | SetConstructor(System.Action\<IPoolObject\>) | Sets the constructon action for objects upon creation.
   void | SetPrefab(GameObject) | Sets the prefab used to create new objects in the pool<br> **\*GameObjectPool Only.**
  </details>
   
@@ -130,7 +131,6 @@ For example, this pool handles bullet GameObjects. Each bullet needs a reference
 ```C#
 _pool.SetConstructor( ( lObj ) => {
   lObj.GetObject().GetComponent<SpawnObject>().Initialize( lObj );
-  return lObj;
 } );
 ```
   
