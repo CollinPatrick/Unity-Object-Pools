@@ -4,7 +4,7 @@
 
 - This repo inclues my UniversalMonobehavior script which allows non-Monobehaviors to utilize aspects of a Monobehavior such as Update and Coroutines with an easy to access singleton instance.
 
-## ObjectPool & GameObjectPool
+## ObjectPool, GameObjectPool, & ComponentPool
 Both **ObjectPool** and **GameObjectPool** are serialized classes that can be exposed in the Unity editor.
 
 The **GameObjectPool** class is a derived class of ObjectPool<T> which is used to pool Unity GameObjects. This class automatically handles the instantiation and destruction of GameObjects. 
@@ -66,7 +66,7 @@ The **GameObjectPool** class is a derived class of ObjectPool<T> which is used t
   PoolType(enum) | poolType | Recycle = Reuse objects while they are still active if pool is full,<br>Overflow = Create temporary objects that get destroyed upon return if pool is full.
   UpdateMode(enum) | updateMode | Interval = Update the pool using a pre-defined interval.<br>Constant = Update the pool every frame.<br>None = Do not update the pool.
   UpdateType(enum) | updateType | Update = Update the pool Unity's Update method.<br>FixedUpdate = Update the pool Unity's FixedUpdate method.<br>LateUpdate = Update the pool using Unity's LateUpdate method.
-  Transform | parentObject | The transform of a GameObject to parent pooled objects to.<br>**\*GameObjectPool Only.**
+  Transform | parentObject | The transform of a GameObject to parent pooled objects to.<br>**\*GameObjectPool & ComponentPool Only.**
    </details>
 
 <details>
@@ -77,7 +77,7 @@ The **GameObjectPool** class is a derived class of ObjectPool<T> which is used t
   IPoolObject | RequestObject() | Retrieves an object from the pool To be used.
   void | ReturnToPool(IPoolObject) | Returns an object to the pool.
   void | SetConstructor(System.Action\<IPoolObject\>) | Sets the constructon action for objects upon creation.
-  void | SetPrefab(GameObject) | Sets the prefab used to create new objects in the pool<br> **\*GameObjectPool Only.**
+  void | SetPrefab(GameObject) | Sets the prefab used to create new objects in the pool<br> **\*GameObjectPool & Component Only.**
  </details>
   
 ## IPoolObject
@@ -125,20 +125,43 @@ An object pool can be created by either constructing the object or exposing it t
 <details>
   <summary>Configuration</summary>
   
-  Because all objects created in the pool use their parameterless constructor and some objects need additional configuration when created, a constructor callback can be set. This callback runs after an object is created and functions like a regualr constructor to remedy this limitation. 
+  ### Constructors
+Because all objects created in the pool use their parameterless constructor and some objects need additional configuration when created, a constructor callback can be set. This callback runs after an object is created and functions like a regualr constructor to remedy this limitation. 
 
-For example, this pool handles bullet GameObjects. Each bullet needs a reference to its PoolObject interface. This could be set when the object is requested, but for efficiency, the reference can be set once, when the bullet is created inside the constructor callback.
+For example, this pool handles bullet GameObjects. Each bullet needs a reference to its IPoolObject interface. This could be set when the object is requested, but for efficiency, the reference can be set once, when the bullet is created inside the constructor callback.
 ```C#
+GameObjectPool _pool;
+  
+  ...
+  
 _pool.SetConstructor( ( lObj ) => {
   lObj.GetObject().GetComponent<SpawnObject>().Initialize( lObj );
 } );
 ```
   
+This can be simplifed even further by using **ComponentPool\<T\>** which also automatically handles the instantiation and destruction of GameObjects, but returns a component type instead. This is useful if a specific component on a GameObject is constantly used.
+
+For example the previous constructor can be simplified like so:
+```C#
+ComponentPool<ComponentSpawnObject> _pool;
+  
+  ...
+  
+_pool.SetConstructor( ( lObj ) => {
+    lObj.GetObject().Initialize( lObj );
+} );
+```
+  
+  ### Callbacks
 Aside from the configuration variables avalible in the constructor and editor fields, the object pools also have callback methods that run when an object is requested, returned, removed, and deleted.
 These can be useful if an object needs additional setup during each step of its life.
 
 For example, this pool handles bullets which need to be enabled/disabled and moved to a specified location when retrieved and returned to and from the pool.
 ```C#
+GameObjectPool _pool;
+  
+  ...
+  
  _pool.StartAction = ( obj ) => {
     obj.transform.position = transform.position + Vector3.up;
     obj.SetActive( true );
@@ -154,5 +177,12 @@ _pool.ReturnAction = ( obj ) => {
 <details>
   <summary>Useage</summary>
   
+  Using an object pool is very simple. 
+  
+  To request an object from the pool, use ``RequestObject()`` which will return an IPoolObject interface that constains the object, assigned pool, status, and active and idle start times. 
+  
+  To manually return an object to its assigned pool, either call the method ``ReturnToPool()`` inside the IPoolObject interface, or call the ``ReturnToPool(IPoolObject)`` method inside the pool object with the IPoolObject you want to return to the pool.
+  
+  It is possible to return an object to a differnt pool of the same type if the new pool is flaged as an "open pool" in its configuration settings. To do so, simply call the ``ReturnToPool(IPoolObject)`` method inside the pool you want to return the object to and supply the IPoolObject as the parameter. If an object is returned to a foreign pool that is not flagged as open or of a different type, the object will be returned to its currently assigned pool. If an object is successfully returned to a foreign pool, it will be removed from its previously assigned pool.
 </details>
 
