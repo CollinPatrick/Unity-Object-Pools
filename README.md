@@ -5,7 +5,7 @@
 - This repo inclues my UniversalMonobehavior script which allows non-Monobehaviors to utilize aspects of a Monobehavior such as Update and Coroutines with an easy to access singleton instance.
 
 ## ObjectPool, GameObjectPool, & ComponentPool
-Both **ObjectPool** and **GameObjectPool** are serialized classes that can be exposed in the Unity editor.
+**ObjectPool**, **GameObjectPool**, and **ComponentPool** are serialized classes that can be exposed in the Unity editor.
 
 The **GameObjectPool** class is a derived class of ObjectPool<T> which is used to pool Unity GameObjects. This class automatically handles the instantiation and destruction of GameObjects. 
 <details>
