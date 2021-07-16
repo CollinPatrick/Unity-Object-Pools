@@ -65,7 +65,7 @@ The **GameObjectPool** class is a derived class of ObjectPool<T> which is used t
   bool | isOpenPool | Can objects not belonging to this pool be returned to this pool? <br>If false, foreign objects returned to this pool will be redirected to their associated pool instead.
   PoolType(enum) | poolType | Recycle = Reuse objects while they are still active if pool is full,<br>Overflow = Create temporary objects that get destroyed upon return if pool is full.
   UpdateMode(enum) | updateMode | Interval = Update the pool using a pre-defined interval.<br>Constant = Update the pool every frame.<br>None = Do not update the pool.
-  UpdateType(enum) | updateType | Update = Update the pool Unity's Update method.<br>FixedUpdate = Update the pool Unity's FixedUpdate method.<br>LateUpdate = Update the pool using Unity's LateUpdate method.
+  UpdateType(enum) | updateType | Update = Update the pool Unity's Update method.<br>FixedUpdate = Update the pool Unity's FixedUpdate method.<br>LateUpdate = Update the pool using Unity's LateUpdate method<br>Custom = The pool will not update unless Update() is called..
   Transform | parentObject | The transform of a GameObject to parent pooled objects to.<br>**\*GameObjectPool & ComponentPool Only.**
    </details>
 
@@ -78,6 +78,7 @@ The **GameObjectPool** class is a derived class of ObjectPool<T> which is used t
   void | ReturnToPool(IPoolObject) | Returns an object to the pool.
   void | SetConstructor(System.Action\<IPoolObject\>) | Sets the constructon action for objects upon creation.
   void | SetPrefab(GameObject) | Sets the prefab used to create new objects in the pool<br> **\*GameObjectPool & Component Only.**
+  void | Update() | Updates the pool when called. This method only works when updateType is set to "Custom".
  </details>
   
 ## IPoolObject
@@ -139,7 +140,7 @@ _pool.SetConstructor( ( lObj ) => {
 } );
 ```
   
-This can be simplifed even further by using **ComponentPool\<T\>** which also automatically handles the instantiation and destruction of GameObjects, but returns a component type instead. This is useful if a specific component on a GameObject is constantly used.
+This can be simplifed even further by using **ComponentPool\<T\>** which also automatically handles the instantiation and destruction of GameObjects, but returns a Monobehavior type instead. This is useful if a specific component on a GameObject is constantly used.
 
 For example the previous constructor can be simplified like so:
 ```C#
