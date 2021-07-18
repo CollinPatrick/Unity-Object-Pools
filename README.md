@@ -67,6 +67,12 @@ The **GameObjectPool** class is a derived class of ObjectPool<T> which is used t
   UpdateMode(enum) | updateMode | Interval = Update the pool using a pre-defined interval.<br>Constant = Update the pool every frame.<br>None = Do not update the pool.
   UpdateType(enum) | updateType | Update = Update the pool Unity's Update method.<br>FixedUpdate = Update the pool Unity's FixedUpdate method.<br>LateUpdate = Update the pool using Unity's LateUpdate method<br>Custom = The pool will not update unless Update() is called..
   Transform | parentObject | The transform of a GameObject to parent pooled objects to.<br>**\*GameObjectPool & ComponentPool Only.**
+  bool | initialized | Has the pool been intialized? The pool initializes automatically when the first object is requested.
+  int | size | The number of objects currently in the pool.
+  int | activeObjects | The number of active objects inside the pool.
+  int | overflowObjects | The number of overflow objects inside the pool.
+  int | idleObjects | The number of idle objects inside the pool.
+  float | lastUpdateTime | The last time the pool was updated in Time.realtimeSinceStartup
    </details>
 
 <details>
