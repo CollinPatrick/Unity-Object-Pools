@@ -43,11 +43,13 @@ public class PoolTester : MonoBehaviour
         };
     }
 
-    // Update is called once per frame
     void Update()
     {
-        Shoot();
-        Shoot2();
+        if( _pool != null ) {
+            Shoot();
+            Shoot2();
+        }
+
     }
 
     private void Shoot() {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [Serializable]
-public class ObjectPool<T> where T : new() {
+public class ObjectPool<T> : IDisposable where T : new() {
 
     #region Wrapper Classes
     public enum ObjectStatus {
@@ -151,7 +151,8 @@ public class ObjectPool<T> where T : new() {
     public enum UpdateType {
         Update,
         FixedUpdate,
-        LateUpdate
+        LateUpdate,
+        Custom
     }
     #endregion
 
@@ -165,7 +166,8 @@ public class ObjectPool<T> where T : new() {
     [SerializeField, HideInInspector] protected List<PoolReciept> _overflowObjects = new List<PoolReciept>();
     [SerializeField, HideInInspector] protected List<PoolReciept> _idleObjects = new List<PoolReciept>();
 
-    public delegate IPoolObject ConstructObject( IPoolObject aObject );
+    #region Variables
+
     protected Action<IPoolObject> _constructor;
 
     /// <summary>
@@ -237,6 +239,7 @@ public class ObjectPool<T> where T : new() {
     /// Update = Update the pool Unity's Update method.
     /// FixedUpdate = Update the pool Unity's FixedUpdate method.
     /// LateUpdate = Update the pool using Unity's LateUpdate method.
+    /// Custom = The pool will not update unless Update() is called.
     /// </summary>
     public UpdateType updateType { 
         get {
@@ -249,7 +252,35 @@ public class ObjectPool<T> where T : new() {
         }
     }
 
-    private float lastUpdateTime = 0;
+    private float _lastUpdateTime = 0;
+    #endregion
+
+    #region Pool Info
+    /// <summary>
+    /// Has the pool been intialized? The pool initializes automatically when the first object is requested.
+    /// </summary>
+    public bool initialized => _initialized;
+    /// <summary>
+    /// The number of objects currently in the pool.
+    /// </summary>
+    public int size => ( _pool != null ) ? _pool.Count : 0;
+    /// <summary>
+    /// The number of active objects inside the pool.
+    /// </summary>
+    public int activeObjects => ( _activeObjects != null ) ? _activeObjects.Count : 0;
+    /// <summary>
+    /// The number of overflow objects inside the pool.
+    /// </summary>
+    public int overflowObjects => ( _overflowObjects != null ) ? _overflowObjects.Count : 0;
+    /// <summary>
+    /// The number of idle objects inside the pool.
+    /// </summary>
+    public int idleObjects => ( _idleObjects != null ) ? _idleObjects.Count : 0;
+    /// <summary>
+    /// The last time the pool was updated in Time.realtimeSinceStartup.
+    /// </summary>
+    public float lastUpdateTime => _lastUpdateTime;
+    #endregion
 
     #region Constructors & Initialization
     public ObjectPool( int aMaxObjects, float aDestroyIdleWaitTimeInSeconds,
@@ -278,10 +309,6 @@ public class ObjectPool<T> where T : new() {
         _constructor = aContruct;
     }
 
-    ~ObjectPool(){
-        RemoveUpdate( updateType );
-    }
-
     private void Initialize() {
         if ( _initialized ) {
             return;
@@ -298,6 +325,19 @@ public class ObjectPool<T> where T : new() {
     }
 
     protected virtual void InternalInitialize() { }
+
+    public virtual void Dispose() {
+        _pool = null;
+        _activeObjects = null;
+        _overflowObjects = null;
+        _idleObjects = null;
+        RemoveUpdate( updateType );
+        GC.SuppressFinalize( this );
+    }
+
+    ~ObjectPool() {
+        Dispose();
+    }
     #endregion
 
     #region Object Handling
@@ -503,7 +543,7 @@ public class ObjectPool<T> where T : new() {
                     if(poolType == PoolType.Overflow ) {
                         UpdateOverflow();
                     }
-                    lastUpdateTime = Time.realtimeSinceStartup;
+                    _lastUpdateTime = Time.realtimeSinceStartup;
                 }
                 break;
             case UpdateMode.Constant:
@@ -516,7 +556,7 @@ public class ObjectPool<T> where T : new() {
                 if ( poolType == PoolType.Overflow ) {
                     UpdateOverflow();
                 }
-                lastUpdateTime = Time.realtimeSinceStartup;
+                _lastUpdateTime = Time.realtimeSinceStartup;
                 break;
             case UpdateMode.None:
                 break;
@@ -549,7 +589,13 @@ public class ObjectPool<T> where T : new() {
             }
         }
     }
-    #endregion
+
+    public void Update() {
+        if( updateType == UpdateType.Custom ) {
+            Tick();
+        }
+    }
+#endregion
 
     #region Setters
     public void SetConstructor( Action<IPoolObject> aConstruct ) {
@@ -583,6 +629,14 @@ public class GameObjectPool : ObjectPool<GameObject>{
 
     public GameObjectPool( GameObject aPrefab, Action<IPoolObject> aConstruct = null ) : base( aConstruct ) {
         _prefab = aPrefab;
+    }
+
+    public override void Dispose() {
+        for ( int i = _pool.Count - 1; i >= 0 ; i-- ) {
+            GameObject.Destroy( _pool[i].payload.obj );
+            _pool.RemoveAt( i );
+        }
+        base.Dispose();
     }
 
     protected override PoolReciept CreateObject() {
@@ -634,6 +688,13 @@ public class ComponentPool<T> : ObjectPool<T> where T : MonoBehaviour, new() {
 
     public ComponentPool( GameObject aPrefab, Action<IPoolObject> aConstruct = null ) : base( aConstruct ) {
         _prefab = aPrefab;
+    }
+
+    public override void Dispose() {
+        for ( int i = _pool.Count - 1; i <= 0; i-- ) {
+            GameObject.Destroy( _pool[i].payload.obj );
+        }
+        base.Dispose();
     }
 
     protected override PoolReciept CreateObject() {

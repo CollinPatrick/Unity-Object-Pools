@@ -251,8 +251,8 @@ MonoBehaviour:
     poolType: 0
     updateMode: 1
     _updateType: 0
-    _prefab: {fileID: 6938582321190014454, guid: 84756f8babeeacc448ccaed564761916, type: 3}
-    parentObject: {fileID: 0}
+    _prefab: {fileID: 8480061058080721519, guid: 6929a331177627a4c82ed2fe398beabe, type: 3}
+    parentObject: {fileID: 91306820}
   _shootInterval: 0.3
 --- !u!1 &705507993
 GameObject:
