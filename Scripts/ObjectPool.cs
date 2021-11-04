@@ -357,25 +357,21 @@ public class ObjectPool<T> : IDisposable where T : new() {
     }
 
     protected virtual void RemoveObject( PoolReciept aReciept ) {
-        if ( _pool.Contains( aReciept ) ) {
+        if ( _pool.Remove( aReciept ) ) {
             aReciept.status = ObjectStatus.Removed;
-            _pool.Remove( aReciept );
         }
 
-        if ( _activeObjects.Contains( aReciept ) ) {
-            _activeObjects.Remove( aReciept );
+        if ( _activeObjects.Remove( aReciept ) ) {
             RemoveAction?.Invoke( aReciept.payload.obj );
             return;
         }
 
-        if ( _overflowObjects.Contains( aReciept ) ) {
-            _overflowObjects.Remove( aReciept );
+        if ( _overflowObjects.Remove( aReciept ) ) {
             RemoveAction?.Invoke( aReciept.payload.obj );
             return;
         }
 
-        if ( _idleObjects.Contains( aReciept ) ) {
-            _idleObjects.Remove( aReciept );
+        if (  _idleObjects.Remove( aReciept ) ) {
             RemoveAction?.Invoke( aReciept.payload.obj );
             return;
         }
@@ -442,15 +438,13 @@ public class ObjectPool<T> : IDisposable where T : new() {
             return;
         }
 
-        if ( _activeObjects.Contains( lReciept ) ) {
-            _activeObjects.Remove( lReciept );
+        if ( _activeObjects.Remove( lReciept ) ) {
             lReciept.SetStatus( ObjectStatus.Idle );
             _idleObjects.Add( lReciept );
             ReturnAction?.Invoke( lReciept.payload.obj );
 
-        }else if( _overflowObjects.Contains( lReciept ) ) {
+        }else if( _overflowObjects.Remove( lReciept ) ) {
             if( _pool.Count < maxObjects || poolType == PoolType.Recycle ) {
-                _overflowObjects.Remove( lReciept );
                 _idleObjects.Add( lReciept );
                 ReturnAction?.Invoke( lReciept.payload.obj );
             }
